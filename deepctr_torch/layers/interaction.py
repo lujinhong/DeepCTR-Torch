@@ -23,6 +23,8 @@ class FM(nn.Module):
     def __init__(self):
         super(FM, self).__init__()
 
+    # 在deepfm中，inputs是输入X对应的embedding组成的list
+    # 这里用的是FM计算时间复杂度为O(kn)的方式，其实本质就是计算样本中所有特征对应的v的平方和。
     def forward(self, inputs):
         fm_input = inputs
 

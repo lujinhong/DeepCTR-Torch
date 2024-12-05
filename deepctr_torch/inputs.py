@@ -17,6 +17,17 @@ from .layers.utils import concat_fun
 DEFAULT_GROUP_NAME = "default_group"
 
 
+"""
+SparseFeat本质就是一个nametuple，
+名称是SparseFeat, 主要的fields是前3个：
+    name:特征名称
+    vocabulary_size: 特征的维度大小
+    embedding_dim: 特征的embedding维度
+    use_hash: 是否使用hash
+    dtype: 特征的类型
+    embedding_name: 特征的embedding名称
+    group_name: 特征的分组名称
+"""
 class SparseFeat(namedtuple('SparseFeat',
                             ['name', 'vocabulary_size', 'embedding_dim', 'use_hash', 'dtype', 'embedding_name',
                              'group_name'])):
@@ -77,6 +88,9 @@ class VarLenSparseFeat(namedtuple('VarLenSparseFeat',
         return self.name.__hash__()
 
 
+"""
+指定了dimension=1, dtype="float32"
+"""
 class DenseFeat(namedtuple('DenseFeat', ['name', 'dimension', 'dtype'])):
     __slots__ = ()
 
@@ -86,7 +100,9 @@ class DenseFeat(namedtuple('DenseFeat', ['name', 'dimension', 'dtype'])):
     def __hash__(self):
         return self.name.__hash__()
 
-
+"""
+feature_columns是由SparseFeat和DenseFeat组成的list
+"""
 def get_feature_names(feature_columns):
     features = build_input_features(feature_columns)
     return list(features.keys())
@@ -98,6 +114,7 @@ def get_feature_names(feature_columns):
 
 def build_input_features(feature_columns):
     # Return OrderedDict: {feature_name:(start, start+dimension)}
+    # 返回每个feature在X中对应的位置。
 
     features = OrderedDict()
 
@@ -106,6 +123,10 @@ def build_input_features(feature_columns):
         feat_name = feat.name
         if feat_name in features:
             continue
+        """
+        SparseFeat只是一个LabelEncoder.fit_transform()得到的int类型的ID，见run_regression_movielens.py的第20-26行
+        之后会通过这个ID去lookup embedding
+        """
         if isinstance(feat, SparseFeat):
             features[feat_name] = (start, start + 1)
             start += 1
@@ -154,7 +175,12 @@ def get_varlen_pooling_list(embedding_dict, features, feature_index, varlen_spar
         varlen_sparse_embedding_list.append(emb)
     return varlen_sparse_embedding_list
 
-
+"""
+使用nn.Embedding生成默认的embedding，这个embedding可以在之后的模型训练中再次训练。
+函数返回的是一个Dict：{特征列名称：Embedding}
+Embedding是一个lookup table that stores embeddings of a fixed dictionary and size
+也就是Embedding是一个N行的table，每一行表一个一个字符，列数为embedding维度的大小。输入一个字符，输出对应的embedding
+"""
 def create_embedding_matrix(feature_columns, init_std=0.0001, linear=False, sparse=False, device='cpu'):
     # Return nn.ModuleDict: for sparse features, {embedding_name: nn.Embedding}
     # for varlen sparse features, {embedding_name: nn.EmbeddingBag}

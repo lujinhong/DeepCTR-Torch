@@ -34,16 +34,19 @@ from ..callbacks import History
 class Linear(nn.Module):
     def __init__(self, feature_columns, feature_index, init_std=0.0001, device='cpu'):
         super(Linear, self).__init__()
+        # build_input_features Return OrderedDict: {feature_name:(start, start+dimension)}
+        # 也就是每个feature对应的开始位置和结束位置。
         self.feature_index = feature_index
         self.device = device
+        # 分别取出特征列中的sparse, dense, varlen_sparse
         self.sparse_feature_columns = list(
             filter(lambda x: isinstance(x, SparseFeat), feature_columns)) if len(feature_columns) else []
         self.dense_feature_columns = list(
             filter(lambda x: isinstance(x, DenseFeat), feature_columns)) if len(feature_columns) else []
-
         self.varlen_sparse_feature_columns = list(
             filter(lambda x: isinstance(x, VarLenSparseFeat), feature_columns)) if len(feature_columns) else []
 
+        # 初始化sparse特征对应的参数。由于linear=True，所以每个特征也只对应一列，这个和dense是没区别的。
         self.embedding_dict = create_embedding_matrix(feature_columns, init_std, linear=True, sparse=False,
                                                       device=device)
 
@@ -55,13 +58,18 @@ class Linear(nn.Module):
         for tensor in self.embedding_dict.values():
             nn.init.normal_(tensor.weight, mean=0, std=init_std)
 
+        # 初始化dense特征对应的参数
         if len(self.dense_feature_columns) > 0:
             self.weight = nn.Parameter(torch.Tensor(sum(fc.dimension for fc in self.dense_feature_columns), 1).to(
                 device))
             torch.nn.init.normal_(self.weight, mean=0, std=init_std)
 
+    # linear层的作用就是把各个sparse feature对应的embedding做了一个sum pooling, 再加上dense feature * weight，组成一个logit（每个样本一个数值）, 进入最后的输出层。
     def forward(self, X, sparse_feat_refine_weight=None):
 
+        # 将各个embedding组成一个队列。feature_index是一个OrderedDict: {feature_name:(start, start+dimension)}
+        # 在linear中，由于linear=True，所以每个特征也只对应一列，这个和dense是没区别的。我们先取出X中该列的数值，然后
+        # embedding_dict[feat.embedding_name]()转成对应的embedding数值，其实也就是一个数值。
         sparse_embedding_list = [self.embedding_dict[feat.embedding_name](
             X[:, self.feature_index[feat.name][0]:self.feature_index[feat.name][1]].long()) for
             feat in self.sparse_feature_columns]
@@ -78,12 +86,15 @@ class Linear(nn.Module):
 
         linear_logit = torch.zeros([X.shape[0], 1]).to(self.device)
         if len(sparse_embedding_list) > 0:
+            # 把所有的sparse embedding concat起来。
             sparse_embedding_cat = torch.cat(sparse_embedding_list, dim=-1)
             if sparse_feat_refine_weight is not None:
                 # w_{x,i}=m_{x,i} * w_i (in IFM and DIFM)
                 sparse_embedding_cat = sparse_embedding_cat * sparse_feat_refine_weight.unsqueeze(1)
+            # 得到sparse部分对应的logit。把所有的feature对应的embedding直接加起来。
             sparse_feat_logit = torch.sum(sparse_embedding_cat, dim=-1, keepdim=False)
             linear_logit += sparse_feat_logit
+        # 输入的dense部分，乘以对应的参数，则得到dense部分对应的logit
         if len(dense_value_list) > 0:
             dense_value_logit = torch.cat(
                 dense_value_list, dim=-1).matmul(self.weight)
@@ -98,6 +109,7 @@ class BaseModel(nn.Module):
 
         super(BaseModel, self).__init__()
         torch.manual_seed(seed)
+        # dnn_feature_columns是list(feature)，期中feature是一个namedtuple，包括feature的属性：名称、维度、数据类型等
         self.dnn_feature_columns = dnn_feature_columns
 
         self.reg_loss = torch.zeros((1,), device=device)
@@ -108,10 +120,12 @@ class BaseModel(nn.Module):
             raise ValueError(
                 "`gpus[0]` should be the same gpu with `device`")
 
+        # build_input_features Return OrderedDict: {feature_name:(start, start+dimension)}
+        # 也就是每个feature对应的开始位置和结束位置。
         self.feature_index = build_input_features(
             linear_feature_columns + dnn_feature_columns)
         self.dnn_feature_columns = dnn_feature_columns
-
+        # ModuleDict类型，key是特征名称，value是一个Embedding。
         self.embedding_dict = create_embedding_matrix(dnn_feature_columns, init_std, sparse=False, device=device)
         #         nn.ModuleDict(
         #             {feat.embedding_name: nn.Embedding(feat.dimension, embedding_size, sparse=True) for feat in
@@ -152,6 +166,7 @@ class BaseModel(nn.Module):
 
         :return: A `History` object. Its `History.history` attribute is a record of training loss values and metrics values at successive epochs, as well as validation loss values and validation metrics values (if applicable).
         """
+        # 如果x是一个字典，而非list，则将所需的feature对应的数值按顺序组成一个list。这个list里面的每个元素是pandas中的一列，表示该feature对应的数值或者embedding。
         if isinstance(x, dict):
             x = [x[feature] for feature in self.feature_index]
 
@@ -242,6 +257,8 @@ class BaseModel(nn.Module):
                         x = x_train.to(self.device).float()
                         y = y_train.to(self.device).float()
 
+                        # model是train()函数构造的，返回的是self对象，对于模型而言就是自己（比如deepfm）。
+                        # 由于__call__函数可以用对象直接调用，而nn.module.__call__()函数调用的是forward，所以这里的model(x)就是调用了模型中的forward函数。
                         y_pred = model(x).squeeze()
 
                         optim.zero_grad()
@@ -351,6 +368,8 @@ class BaseModel(nn.Module):
 
         return np.concatenate(pred_ans).astype("float64")
 
+    # 根据X取出对应的embedding，作为模型输入。
+    # 函数返回sparse特征组成的list(embedding)，以后dense特征组成的list(dense_value)
     def input_from_feature_columns(self, X, feature_columns, embedding_dict, support_dense=True):
 
         sparse_feature_columns = list(
@@ -379,6 +398,7 @@ class BaseModel(nn.Module):
 
         return sparse_embedding_list + varlen_sparse_embedding_list, dense_value_list
 
+    # 计算输入数据的维度，以确定DNN输入层的dimension。
     def compute_input_dim(self, feature_columns, include_sparse=True, include_dense=True, feature_group=False):
         sparse_feature_columns = list(
             filter(lambda x: isinstance(x, (SparseFeat, VarLenSparseFeat)), feature_columns)) if len(
@@ -409,6 +429,7 @@ class BaseModel(nn.Module):
             weight_list = list(weight_list)
         self.regularization_weight.append((weight_list, l1, l2))
 
+    # sum(参数*l1)或者sum(参数的平方*l2)，这部分也算是loss的一部分。这就限制了参数过大的问题。
     def get_regularization_loss(self, ):
         total_reg_loss = torch.zeros((1,), device=self.device)
         for weight_list, l1, l2 in self.regularization_weight:

@@ -15,6 +15,7 @@ from ..layers import FM, DNN
 
 class DeepFM(BaseModel):
     """Instantiates the DeepFM Network architecture.
+    Instantiate the DeepFM Network architecture.
 
     :param linear_feature_columns: An iterable containing all the features used by linear part of the model.
     :param dnn_feature_columns: An iterable containing all the features used by deep part of the model.
@@ -70,6 +71,7 @@ class DeepFM(BaseModel):
                                                                                   self.embedding_dict)
         logit = self.linear_model(X)
 
+        # 从计算中也可以看出来，输入X对应的embedding在FM中是没有训练的，只用于计算数值，只有在下面的DNN才会训练。
         if self.use_fm and len(sparse_embedding_list) > 0:
             fm_input = torch.cat(sparse_embedding_list, dim=1)
             logit += self.fm(fm_input)
@@ -84,3 +86,4 @@ class DeepFM(BaseModel):
         y_pred = self.out(logit)
 
         return y_pred
+

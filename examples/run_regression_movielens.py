@@ -17,6 +17,7 @@ if __name__ == "__main__":
     # 1.Label Encoding for sparse features,and do simple Transformation for dense features
     for feat in sparse_features:
         lbe = LabelEncoder()
+        # 将sparsefeature转成连续的ID
         data[feat] = lbe.fit_transform(data[feat])
     # 2.count #unique features for each sparse field
     fixlen_feature_columns = [SparseFeat(feat, data[feat].nunique())

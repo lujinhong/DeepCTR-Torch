@@ -79,7 +79,6 @@ class DIN(BaseModel):
         self.dnn_linear = nn.Linear(dnn_hidden_units[-1], 1, bias=False).to(device)
         self.to(device)
 
-
     def forward(self, X):
         _, dense_value_list = self.input_from_feature_columns(X, self.dnn_feature_columns, self.embedding_dict)
 
