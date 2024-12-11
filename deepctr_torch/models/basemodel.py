@@ -70,6 +70,8 @@ class Linear(nn.Module):
         # 将各个embedding组成一个队列。feature_index是一个OrderedDict: {feature_name:(start, start+dimension)}
         # 在linear中，由于linear=True，所以每个特征也只对应一列，这个和dense是没区别的。我们先取出X中该列的数值，然后
         # embedding_dict[feat.embedding_name]()转成对应的embedding数值，其实也就是一个数值。
+
+        # X中是一些feature值，embedding_dict的value是一个embedding对象，输入feature值，返回embedding数值
         sparse_embedding_list = [self.embedding_dict[feat.embedding_name](
             X[:, self.feature_index[feat.name][0]:self.feature_index[feat.name][1]].long()) for
             feat in self.sparse_feature_columns]
@@ -77,7 +79,7 @@ class Linear(nn.Module):
         dense_value_list = [X[:, self.feature_index[feat.name][0]:self.feature_index[feat.name][1]] for feat in
                             self.dense_feature_columns]
 
-        sequence_embed_dict = varlen_embedding_lookup(X, self.embedding_dict, self.feature_index,
+        sequence_embed_dict = varlen_embedding_lookup(X,  self.embedding_dict, self.feature_index,
                                                       self.varlen_sparse_feature_columns)
         varlen_embedding_list = get_varlen_pooling_list(sequence_embed_dict, X, self.feature_index,
                                                         self.varlen_sparse_feature_columns, self.device)

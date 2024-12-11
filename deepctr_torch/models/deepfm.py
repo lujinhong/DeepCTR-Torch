@@ -72,6 +72,7 @@ class DeepFM(BaseModel):
         logit = self.linear_model(X)
 
         # 从计算中也可以看出来，输入X对应的embedding在FM中是没有训练的，只用于计算数值，只有在下面的DNN才会训练。
+        # FM为什么不用dense_value_list？
         if self.use_fm and len(sparse_embedding_list) > 0:
             fm_input = torch.cat(sparse_embedding_list, dim=1)
             logit += self.fm(fm_input)

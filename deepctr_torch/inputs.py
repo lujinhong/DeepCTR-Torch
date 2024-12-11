@@ -4,6 +4,24 @@ Author:
     Weichen Shen,weichenswc@163.com
 """
 
+
+"""
+几个关键的变量：
+1. X是原始输入，是一个矩阵，sparse类型的feature只是其中一列，比如male,guangzhou等。
+2. feature_column：是一个list，里面是SparseFeat和DenseFeat。
+3. feature_index: 是一个dict，key是特征名称，value是特征在X中的起始位置。OrderedDict: {feature_name:(start, start+dimension)}
+4. embedding_dict：一个dict。
+    # Return nn.ModuleDict: for sparse features, {embedding_name: nn.Embedding}
+    # for varlen sparse features, {embedding_name: nn.EmbeddingBag}
+5.以上四者一个典型的应用是：（1）从sparse_feature_columns取出每个feature；（2）通过feature_name，在feature_index中取出feature的位置
+（3）在X中取出对应位置的feature（4）在embedding_dict取出相应的embedding对象，并将上一步取出的feature转换成embedding。
+[self.embedding_dict[feat.embedding_name](
+            X[:, self.feature_index[feat.name][0]:self.feature_index[feat.name][1]].long()) for
+            feat in self.sparse_feature_columns]
+6. 上一步得到的embedding，就是进入模型的输入。
+
+"""
+
 from collections import OrderedDict, namedtuple, defaultdict
 from itertools import chain
 
@@ -112,9 +130,9 @@ def get_feature_names(feature_columns):
 #     return list(chain(*list(map(lambda x: x.values(), filter(lambda x: x is not None, inputs)))))
 
 
+# 构建feature_index。返回每个feature在X中对应的位置。
 def build_input_features(feature_columns):
     # Return OrderedDict: {feature_name:(start, start+dimension)}
-    # 返回每个feature在X中对应的位置。
 
     features = OrderedDict()
 
