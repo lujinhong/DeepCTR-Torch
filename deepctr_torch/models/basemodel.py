@@ -169,6 +169,7 @@ class BaseModel(nn.Module):
         :return: A `History` object. Its `History.history` attribute is a record of training loss values and metrics values at successive epochs, as well as validation loss values and validation metrics values (if applicable).
         """
         # 如果x是一个字典，而非list，则将所需的feature对应的数值按顺序组成一个list。这个list里面的每个元素是pandas中的一列，表示该feature对应的数值或者embedding。
+        # x返回一个list，len(x)=feature_index的数量。
         if isinstance(x, dict):
             x = [x[feature] for feature in self.feature_index]
 
@@ -205,10 +206,16 @@ class BaseModel(nn.Module):
         else:
             val_x = []
             val_y = []
+        # x本质上还是二维矩阵，只是每个元素都是一个列表，这个列表的元素大小不一致。
+        # 如果是sparse，则每个元素的尺寸为feature embedding的维度。
+        # 如果是dense，则为纯数字，所以每个元素为dimension=1的列表。
         for i in range(len(x)):
             if len(x[i].shape) == 1:
                 x[i] = np.expand_dims(x[i], axis=1)
 
+        # x转成二维矩阵，拼上y,成为最终的训练数据。
+        # x的shape为sum(feature维度）* 样本量。
+        # 由下面的sample_num = len(train_tensor_data)得知，train_tensor_data应该是（M，N）的矩阵。
         train_tensor_data = Data.TensorDataset(
             torch.from_numpy(
                 np.concatenate(x, axis=-1)),

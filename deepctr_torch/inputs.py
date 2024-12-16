@@ -7,7 +7,9 @@ Author:
 
 """
 几个关键的变量：
-1. X是原始输入，是一个矩阵，sparse类型的feature只是其中一列，比如male,guangzhou等。
+1. X是原始输入，是一个矩阵，sparse类型的feature只是其中一列，比如male,guangzhou等。X中每一个元素是一个feature数值组成的list，这个list的len(list)=样本的数量。
+    所以每一行就是所有样本在这个feature上的值，每一列就是一个样本的所有feature。 所以len(x)就是feature的数量, len(x[0])就是样本的数量。
+    比如X[:,0]就是所有样本的第一个feature，X[:,1]就是所有样本的第二个feature，以此类推。
 2. feature_column：是一个list，里面是SparseFeat和DenseFeat。
 3. feature_index: 是一个dict，key是特征名称，value是特征在X中的起始位置。OrderedDict: {feature_name:(start, start+dimension)}
 4. embedding_dict：一个dict。
