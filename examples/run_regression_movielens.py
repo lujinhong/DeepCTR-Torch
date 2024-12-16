@@ -29,6 +29,7 @@ if __name__ == "__main__":
     # 3.generate input data for model
     train, test = train_test_split(data, test_size=0.2)
     train_model_input = {name: train[name] for name in feature_names}
+    # print("train_model_input:", train_model_input.shape())
     test_model_input = {name: test[name] for name in feature_names}
     # 4.Define Model,train,predict and evaluate
 
