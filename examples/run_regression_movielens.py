@@ -6,8 +6,10 @@ from sklearn.preprocessing import LabelEncoder
 
 from deepctr_torch.inputs import SparseFeat, get_feature_names
 from deepctr_torch.models import DeepFM
+import numpy as np
 
 if __name__ == "__main__":
+    print(1111111)
 
     data = pd.read_csv("./movielens_sample.txt")
     sparse_features = ["movie_id", "user_id",
@@ -40,6 +42,38 @@ if __name__ == "__main__":
 
     model = DeepFM(linear_feature_columns, dnn_feature_columns, task='regression', device=device)
     model.compile("adam", "mse", metrics=['mse'], )
+    print("train_model_input:", len(train_model_input), len(train_model_input.keys()), len(train_model_input.values()))
+    for key in train_model_input.keys():
+        print(key, train_model_input[key], type(train_model_input[key]) )
+    x = train_model_input
+    if isinstance(x, dict):
+        x = [x[feature] for feature in x.keys()]
+    print("===========================")
+    print(type(x))
+    print(type(x[0]))
+    
+    for i in range(len(x)):
+        if len(x[i].shape) == 1:
+            x[i] = np.expand_dims(x[i], axis=1)
+    print('before x=========')
+    print(type(x))
+    print(len(x))
+    print('before x[0]=========')
+    print(type(x[0]))
+    print(x[0].shape)
+    # print(x[0])
+    
+    print("after=============")
+    x = np.concatenate(x, axis=-1)
+    print('after x==========')
+    print(type(x))
+    print(x.shape)
+
+    print('after x[0]==========')
+    print(type(x[0]))
+    print(x[0].shape)
+    print(x[0])
+    
 
     history = model.fit(train_model_input, train[target].values, batch_size=256, epochs=10, verbose=2,
                         validation_split=0.2)

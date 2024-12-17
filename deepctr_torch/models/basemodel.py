@@ -212,6 +212,7 @@ class BaseModel(nn.Module):
         for i in range(len(x)):
             if len(x[i].shape) == 1:
                 x[i] = np.expand_dims(x[i], axis=1)
+        print(x.shape())
 
         # x转成二维矩阵，拼上y,成为最终的训练数据。
         # x的shape为sum(feature维度）* 样本量。
